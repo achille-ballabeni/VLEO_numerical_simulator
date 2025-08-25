@@ -10,14 +10,13 @@ T = 2 * pi * sqrt(a^3 / mi); % [s]
 startTime = datetime(2025,08,24);
 stopTime = startTime + seconds(T);
 sampleTime = 60;
-
 sc = satelliteScenario(startTime,stopTime,sampleTime);
+
+% Add satellite
 a = a*1000;
 sat = satellite(sc,a,e,0,0,0,0);
 sat.Visual3DModel = "bus.glb";
 coordinateAxes(sat);
-
-
 
 % Play scenario
 satelliteScenarioViewer(sc)
