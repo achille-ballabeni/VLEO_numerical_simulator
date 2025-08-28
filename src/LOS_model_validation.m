@@ -41,25 +41,35 @@ simOut = sim(simIn);
 t = simOut.tout;
 
 %% Do some post processing
-Rsat = simOut.yout{1}.Values;
-Qin2body = simOut.yout{4}.Values;
+% Timeseries
+Rsat_ts = simOut.yout{1}.Values;
+Qin2body_ts = simOut.yout{4}.Values;
+
+% Vectors
+Rsat = Rsat_ts.Data;
+Qin2body = Qin2body_ts.Data;
+
 % Inverse quaternion to go from body to inertial
-Qbody2in = quatinv(Qin2body.Data);
+Qbody2in = quatinv(Qin2body);
+
 % Find direction of line of sight, considered as exiting from the x axis of
 % the satellite.
 LOS_hat = quatrotate(Qbody2in,[-1,0,0]);
+
 % Intersection between line of sight and earth surface
-rho = -dot(LOS_hat,Rsat.Data,2) - sqrt((dot(LOS_hat,Rsat.Data,2)).^2 - vecnorm(Rsat.Data,2,2).^2 + Re^2);
+rho = -dot(LOS_hat,Rsat,2) - sqrt((dot(LOS_hat,Rsat,2)).^2 - vecnorm(Rsat,2,2).^2 + Re^2);
 rho(imag(rho) ~= 0) = 0;
 rho(rho<0) = 0;
 indexes = rho ~= 0;
+
 % Find the ground track vector
 Rtar = rho.*LOS_hat;
-Rgt(indexes,:) = Rsat.Data(indexes,:) + Rtar(indexes,:);
+Rgt(indexes,:) = Rsat(indexes,:) + Rtar(indexes,:);
+
 % Quick plot of the orbit to check
 plot3(Rgt(:,1),Rgt(:,2),Rgt(:,3))
 hold on 
-plot3(Rsat.Data(:,1),Rsat.Data(:,2),Rsat.Data(:,3))
+plot3(Rsat(:,1),Rsat(:,2),Rsat(:,3))
 axis equal
 grid on
 
