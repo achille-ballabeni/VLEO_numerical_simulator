@@ -24,13 +24,13 @@ theta2 = deg2rad(0);
 theta1 = deg2rad(0);
 
 q0 = angle2quat(theta3,theta2,theta1,"ZYX");
-w0 = [0,360/T,0]; % Angular velocity in body frame [deg/s]
+w0 = [0,0,0]; % Angular velocity in body frame [deg/s]
 startTime = datetime(2020,1,1,12,0,0);
 startTimeJD = juliandate(startTime);
 simLength = T;
 
 %% Setup simulation
-model = "satellite_propagator.slx";
+model = "simulink/satellite_propagator.slx";
 simIn = Simulink.SimulationInput(model);
 simIn = simIn.setModelParameter("StopTime", num2str(simLength), ...
     "Solver","ode4", ...
@@ -49,6 +49,9 @@ Qin2body_ts = simOut.yout{4}.Values;
 Rsat = Rsat_ts.Data;
 Qin2body = Qin2body_ts.Data;
 
+% Find the timetsamps in UTC
+t_utc = startTime + seconds(t);
+
 % Inverse quaternion to go from body to inertial
 Qbody2in = quatinv(Qin2body);
 
@@ -64,15 +67,39 @@ indexes = rho ~= 0;
 
 % Find the ground track vector
 Rtar = rho.*LOS_hat;
-Rgt(indexes,:) = Rsat(indexes,:) + Rtar(indexes,:);
+Rgt = Rsat + Rtar;
+Rgt(~indexes,:) = 0;
+
+% Find ground track of satellite
+Rsat_gt = Rsat .* (Re ./ vecnorm(Rsat, 2, 2));
+
+% Convert to ECEF
+Rsat_ecef = helpers.eci2ecef(t_utc,Rsat);
+Rgt_ecef = helpers.eci2ecef(t_utc,Rgt);
+
+% Latitude and longitude
+lla_sat = ecef2lla(Rsat_ecef,0,Re);
+ll_sat = lla_sat(:,1:2);
+lla_gt = ecef2lla(Rgt_ecef,0,Re);
+ll_gt = lla_gt(:,1:2);
+
+% Plot ground tracks
+figure(1)
+geoplot(ll_sat(:,1),ll_sat(:,2))
+hold on
+geoplot(ll_gt(:,1),ll_gt(:,2))
+legend("Satellite","LoS")
+geobasemap("satellite")
 
 % Quick plot of the orbit to check
-plot3(Rgt(:,1),Rgt(:,2),Rgt(:,3))
-hold on 
+figure(2)
 plot3(Rsat(:,1),Rsat(:,2),Rsat(:,3))
+hold on
+plot3(Rsat_gt(:,1), Rsat_gt(:,2), Rsat_gt(:,3))
+plot3(Rgt(:,1),Rgt(:,2),Rgt(:,3))
 axis equal
 grid on
-
+legend("Satellite","Sat ground track","LoS")
 
 %% Define the satellite scenario for visualization
 % Set simulation duration to 1 full orbital period
@@ -83,8 +110,9 @@ stopTime = startTime + seconds(simLength);
 sc = satelliteScenario(startTime,stopTime,sampleTime);
 
 % Add satellite
-sat = satellite(sc,Rsat,"Name","CubeSat");
-pointAt(sat,Qin2body);
+sat = satellite(sc,Rsat_ts,"Name","CubeSat");
+pointAt(sat,Qin2body_ts);
+groundTrack(sat);
 sat.Visual3DModel = "bus.glb";
 coordinateAxes(sat);
 
