@@ -16,6 +16,9 @@ classdef satellite_simulation < handle
         simIn
         simOut
         t
+        Rsat
+        Qin2body
+        Rtar
     end
 
     methods
@@ -112,13 +115,19 @@ classdef satellite_simulation < handle
 
         function obj = simulate(obj)
             % RUN Runs the simulink model.
+
             obj.simOut = sim(obj.simIn);
             obj.t = obj.simOut.tout;
+
+            % Save the satellite position and attitude in ECI.
+            obj.Rsat = obj.simOut.yout{1}.Values.Data;
+            obj.Qin2body = obj.simOut.yout{4}.Values.Data;
+
         end
 
         function play_scenario(obj,sampleTime,Name)
             % PLAY_SCENARIO Play the simulation in a satelliteScenario.
-            % Set simulation duration to 1 full orbital period
+            % Set simulation duration to equivalent Simulink duration.
             %
             % Input Arguments
             %   sampleTime - Timestep of satellite scenario simulation (defaults to 60s).
@@ -141,13 +150,37 @@ classdef satellite_simulation < handle
             
             % Add satellite
             sat = satellite(sc,Rsat_ts,"Name",Name);
-            pointAt(sat,Qin2body_ts);
+            pointAt(sat,Qin2body_ts,"ExtrapolationMethod","fixed"); %TODO: understand why the attitude does not span the whole simulation time
             groundTrack(sat);
             sat.Visual3DModel = "bus.glb";
             coordinateAxes(sat);
             
             % Play scenario
             satelliteScenarioViewer(sc,"CameraReferenceFrame","Inertial");
+        end
+
+        function LOS(obj)
+            % LOS Find the Line-of-Sight vector.
+            % The LOS vector is defined as the vector spanning from the
+            % satellite origin to its intersection with the earth surface.
+            % Its direction is considered as exiting from the x axis of the
+            % satellite.
+
+            % Inverse quaternion to go from body to inertial
+            Qbody2in = quatinv(obj.Qin2body);
+
+            % Find direction of line of sight, considered as exiting from 
+            % the x axis of the satellite.
+            LOS_hat = quatrotate(Qbody2in,[-1,0,0]);
+
+            % Intersection between line of sight and earth surface
+            rho = -dot(LOS_hat,obj.Rsat,2) - sqrt((dot(LOS_hat,obj.Rsat,2)).^2 - vecnorm(obj.Rsat,2,2).^2 + obj.Re^2);
+            rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
+            rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
+
+            % Find the LOS vector
+            obj.Rtar = rho.*LOS_hat;
+            
         end
     end
 end

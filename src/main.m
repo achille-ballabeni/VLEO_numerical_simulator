@@ -10,4 +10,5 @@ startTime = datetime(2020,1,1,12,0,0);
 cubesat = satellite_simulation(orbital_parameters,initial_attitude,initial_angular_velocity,startTime);
 cubesat.initialize_model("simulink/satellite_propagator.slx");
 cubesat.simulate();
+cubesat.LOS();
 cubesat.play_scenario();
