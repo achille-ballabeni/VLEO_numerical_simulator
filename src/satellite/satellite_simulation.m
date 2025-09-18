@@ -179,7 +179,44 @@ classdef satellite_simulation < handle
             rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
 
             % Find the LOS vector
-            obj.Rtar = rho.*LOS_hat;
+            obj.Rtar = rho.*LOS_hat; 
+        end
+
+        function Rgt = ground_track(obj, type, frame)
+            % GROUND_TRACK Computes the ground track vector of the
+            % satellite or the LOS.
+            %
+            % Input Arguments
+            %   type - "satellite" or "los". Defaults to "satellite".
+            %     string
+            %   frame - "eci" or "ecef". Defaults to "eci".
+
+            arguments
+                obj 
+                type (1,1) string = "satellite"
+                frame (1,1) string = "eci"
+            end
+            
+            % Compute corresponding ground track
+            if type == "satellite"
+                % Find ground track of satellite
+                Rgt = obj.Rsat .* (obj.Re ./ vecnorm(obj.Rsat, 2, 2));
+            elseif type == "los"
+                % Find ground track of the LOS
+                indexes = any(obj.Rtar ~= 0, 2);
+                Rgt = obj.Rsat + obj.Rtar;
+                Rgt(~indexes,:) = 0;
+            else
+                error("The type of groundtrack %s is unknown", type)
+            end
+            
+            if frame == "ecef"
+                % Find the timetsamps in UTC
+                t_utc = obj.startTime + seconds(obj.t);
+
+                % Convert to ECEF
+                Rgt = eci2ecef_vect(t_utc,Rgt);
+            end
             
         end
     end
