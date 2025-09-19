@@ -8,17 +8,21 @@ classdef satellite_simulation < handle
     end
 
     properties
-        orbital_parameters
-        initial_attitude
-        initial_angular_velocity
-        startTime
-        simLength
-        simIn
-        simOut
-        t
-        Rsat
-        Qin2body
-        Rtar
+        orbital_parameters % Initial orbital parameters
+        initial_attitude % Initil Euler rotation angles in the order XYZ
+        initial_angular_velocity % Initial angular velocity vector (ECI frame)
+        startTime % Start time of the simulation
+        simLength % Duration of the simulation [s]
+        simIn % Simulink simulation input object
+        simOut % Simulink simulation output object
+        t % Time vector from simulation output
+        Rsat % Satellite position in ECI
+        Vsat % Satellite velocity in ECI
+        Qin2body % Quaternion representing the attitude of the satellite
+        Rlos % Line of sight position (from satellite to earth)
+        Rtar % Target position
+        Vtar % Target velocity
+        Wsat % Satellite angular velocity
     end
 
     methods
@@ -49,7 +53,7 @@ classdef satellite_simulation < handle
             obj.startTime = startTime;
         end
 
-        function obj = initialize_model(obj,model_path,duration)
+        function obj = initialize_model(obj,model_path,duration,timestep)
             % INITIALIZE_MODEL Initializes simulink model with initial conditions.
             % Converts and extract class inputs to initial values for the 
             % simulink model.
@@ -66,6 +70,7 @@ classdef satellite_simulation < handle
                 obj
                 model_path (1,1) string
                 duration double = [];
+                timestep double = 1;
             end
             
             % Convert to Julian date
@@ -100,7 +105,7 @@ classdef satellite_simulation < handle
             obj.simIn = Simulink.SimulationInput(model_path);
             obj.simIn = obj.simIn.setModelParameter("StopTime", num2str(obj.simLength), ...
                 "Solver","ode4", ...
-                "FixedStep","1");
+                "FixedStep",num2str(timestep));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "startDate", num2str(startTimeJD));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "semiMajorAxis", num2str(a));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "eccentricity", num2str(e));
@@ -121,23 +126,30 @@ classdef satellite_simulation < handle
 
             % Save the satellite position and attitude in ECI.
             obj.Rsat = obj.simOut.yout{1}.Values.Data;
+            obj.Vsat = obj.simOut.yout{2}.Values.Data;
             obj.Qin2body = obj.simOut.yout{4}.Values.Data;
+            obj.Wsat = deg2rad(obj.simOut.yout{5}.Values.Data);
 
         end
 
-        function play_scenario(obj,sampleTime,Name)
+        function play_scenario(obj,los_gt,sampleTime,Name)
             % PLAY_SCENARIO Play the simulation in a satelliteScenario.
             % Set simulation duration to equivalent Simulink duration.
             %
             % Input Arguments
+            %   los_gt - Geographic coordinates (lat,lon,alt) of the LOS intersection.
+            %     n-by-3 array
             %   sampleTime - Timestep of satellite scenario simulation (defaults to 60s).
             %     scalar
-            %   Name - Name dispalyed in the simulation (CubeSat).
+            %   Name - Name dispalyed in the simulation (CubeSat by default).
+            %     string
 
             arguments
-                obj 
+                obj
+                los_gt (:,3) double
                 sampleTime (1,1) double = 60
                 Name (1,1) string = "CubeSat"
+                
             end
 
             % Extract timeseries values
@@ -154,6 +166,13 @@ classdef satellite_simulation < handle
             groundTrack(sat);
             sat.Visual3DModel = "bus.glb";
             coordinateAxes(sat);
+
+            % Add conical sensor
+            los_sensor = conicalSensor(sat,"MaxViewAngle",1,"MountingAngles",[0,-90,0]);
+            fieldOfView(los_sensor);
+
+            % LOS intersection
+            platform(sc,timeseries(los_gt),"Name","LOS_intersection");
             
             % Play scenario
             satelliteScenarioViewer(sc,"CameraReferenceFrame","Inertial");
@@ -178,8 +197,12 @@ classdef satellite_simulation < handle
             rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
             rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
 
-            % Find the LOS vector
-            obj.Rtar = rho.*LOS_hat; 
+            % Find the LOS vector and target position vector
+            obj.Rlos = rho.*LOS_hat; 
+            obj.Rtar = obj.Rsat + obj.Rlos;
+
+            % Target velocity
+            obj.Vtar = obj.Vsat - (dot(obj.Rlos,obj.Vsat,2) + dot(obj.Rsat,cross(obj.Wsat,obj.Rlos),2))./(dot(obj.Rsat,LOS_hat,2) + rho).*LOS_hat + cross(obj.Wsat,obj.Rlos);
         end
 
         function Rgt = ground_track(obj, type, frame)
@@ -203,8 +226,8 @@ classdef satellite_simulation < handle
                 Rgt = obj.Rsat .* (obj.Re ./ vecnorm(obj.Rsat, 2, 2));
             elseif type == "los"
                 % Find ground track of the LOS
-                indexes = any(obj.Rtar ~= 0, 2);
-                Rgt = obj.Rsat + obj.Rtar;
+                indexes = any(obj.Rlos ~= 0, 2);
+                Rgt = obj.Rtar;
                 Rgt(~indexes,:) = 0;
             else
                 error("The type of groundtrack %s is unknown", type)
