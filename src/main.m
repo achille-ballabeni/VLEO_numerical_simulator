@@ -51,7 +51,7 @@ legend("Satellite","Sat ground track","LoS")
 %% Play satellite scenario
 % Clean coordinates from negative altitudes
 lla_tar(:,3) = 0;
-cubesat.play_scenario(lla_tar,1);
+cubesat.play_scenario(lla_tar,sampleTime=1);
 
 % Compare calculated velocity with numerical derivative
 Vtar_numerical = diff(cubesat.Rtar)./timestep;
