@@ -53,7 +53,7 @@ classdef satellite_simulation < handle
             obj.startTime = startTime;
         end
 
-        function obj = initialize_model(obj,model_path,duration,timestep)
+        function obj = initialize_model(obj,model_path,options)
             % INITIALIZE_MODEL Initializes simulink model with initial conditions.
             % Converts and extract class inputs to initial values for the 
             % simulink model.
@@ -69,8 +69,8 @@ classdef satellite_simulation < handle
             arguments
                 obj
                 model_path (1,1) string
-                duration double = [];
-                timestep double = 1;
+                options.duration = []
+                options.timestep double = 1
             end
             
             % Convert to Julian date
@@ -85,8 +85,8 @@ classdef satellite_simulation < handle
             ta = obj.orbital_parameters(6); % True Anomaly
 
             % Define simulation duration
-            if duration
-                obj.simLength = duration;
+            if options.duration
+                obj.simLength = options.duration;
             else
                 T = period(a,obj.mi);
                 obj.simLength = T;
@@ -105,7 +105,7 @@ classdef satellite_simulation < handle
             obj.simIn = Simulink.SimulationInput(model_path);
             obj.simIn = obj.simIn.setModelParameter("StopTime", num2str(obj.simLength), ...
                 "Solver","ode4", ...
-                "FixedStep",num2str(timestep));
+                "FixedStep",num2str(options.timestep));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "startDate", num2str(startTimeJD));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "semiMajorAxis", num2str(a));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "eccentricity", num2str(e));
@@ -132,7 +132,7 @@ classdef satellite_simulation < handle
 
         end
 
-        function play_scenario(obj,los_gt,sampleTime,Name)
+        function play_scenario(obj,los_gt,options)
             % PLAY_SCENARIO Play the simulation in a satelliteScenario.
             % Set simulation duration to equivalent Simulink duration.
             %
@@ -147,8 +147,8 @@ classdef satellite_simulation < handle
             arguments
                 obj
                 los_gt (:,3) double
-                sampleTime (1,1) double = 60
-                Name (1,1) string = "CubeSat"
+                options.sampleTime (1,1) double = 60
+                options.Name (1,1) string = "CubeSat"
                 
             end
 
@@ -158,10 +158,10 @@ classdef satellite_simulation < handle
             
             % Setup satellite scenario object
             stopTime = obj.startTime + seconds(obj.simLength);
-            sc = satelliteScenario(obj.startTime,stopTime,sampleTime);
+            sc = satelliteScenario(obj.startTime,stopTime,options.sampleTime);
             
             % Add satellite
-            sat = satellite(sc,Rsat_ts,"Name",Name);
+            sat = satellite(sc,Rsat_ts,"Name",options.Name);
             pointAt(sat,Qin2body_ts,"ExtrapolationMethod","fixed"); %TODO: understand why the attitude does not span the whole simulation time
             groundTrack(sat);
             sat.Visual3DModel = "bus.glb";

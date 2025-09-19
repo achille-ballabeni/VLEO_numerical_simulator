@@ -10,8 +10,9 @@ initial_angular_velocity = [0;0;360/T];
 startTime = datetime(2020,1,1,12,0,0);
 
 %% Run simulation
+timestep = 1;
 cubesat = satellite_simulation(orbital_parameters,initial_attitude,initial_angular_velocity,startTime);
-cubesat.initialize_model("simulink/satellite_propagator.slx",20,1);
+cubesat.initialize_model("simulink/satellite_propagator.slx",duration=200,timestep=timestep);
 cubesat.simulate();
 
 %% Perform LOS analysis
@@ -52,3 +53,12 @@ legend("Satellite","Sat ground track","LoS")
 lla_tar(:,3) = 0;
 cubesat.play_scenario(lla_tar,1);
 
+% Compare calculated velocity with numerical derivative
+Vtar_numerical = diff(cubesat.Rtar)./timestep;
+Vtar = cubesat.Vtar(2:end,:);
+figure(3)
+plot(Vtar)
+hold on
+plot(Vtar_numerical)
+legend("u - analytic","v - analytic","w - analytic","u - numerical","v - numerical","w - numerical")
+% TODO: compute difference between the two
