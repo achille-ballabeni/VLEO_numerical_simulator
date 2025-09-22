@@ -204,24 +204,13 @@ classdef satellite_simulation < handle
             if options.model == "sphere"
                 % Intersection between line of sight and earth surface
                 rho = sphere_intersection(obj.Re,obj.Rsat,LOS_hat);
-            elseif options.model == "WBGS84"
+            elseif options.model == "WGS84"
                 % Insersection between line of sight and the WBGS84
-                % ellispoid.
+                % ellispoid https://en.wikipedia.org/wiki/World_Geodetic_System#WGS84
                 a = 6378137.0;
                 b = a;
                 c = 6356752.314245;
-                
-                p1 = (LOS_hat(:,1).^2)./a^2 + (LOS_hat(:,2).^2)./b^2 + (LOS_hat(:,3).^2)./c^2;
-                p2 = (2*obj.Rsat(:,1).*LOS_hat(:,1))./a^2 + (2*obj.Rsat(:,2).*LOS_hat(:,2))./b^2 + (2*obj.Rsat(:,3).*LOS_hat(:,3))./c^2;
-                p3 = (obj.Rsat(:,1).^2)./a^2 + (obj.Rsat(:,2).^2)./b^2 + (obj.Rsat(:,3).^2)./c^2-1;
-                rho = zeros(size(obj.t));
-                for i = 1:numel(obj.t)
-                    r = roots([p1(i),p2(i),p3(i)]);
-                    r = r(~imag(r));
-                    r = min(r);
-                    r(r<0) = 0;
-                    rho(i,1) = r;
-                end
+                rho = ellipsoid_intersection([a,b,c],obj.Rsat,LOS_hat);
             else
                 error("The type %s is unknown for the los calculation", options.type)
             end
