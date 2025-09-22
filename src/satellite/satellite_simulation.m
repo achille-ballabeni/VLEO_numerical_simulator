@@ -203,9 +203,7 @@ classdef satellite_simulation < handle
 
             if options.model == "sphere"
                 % Intersection between line of sight and earth surface
-                rho = -dot(LOS_hat,obj.Rsat,2) - sqrt((dot(LOS_hat,obj.Rsat,2)).^2 - vecnorm(obj.Rsat,2,2).^2 + obj.Re^2);
-                rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
-                rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
+                rho = sphere_intersection(obj.Re,obj.Rsat,LOS_hat);
             elseif options.model == "WBGS84"
                 % Insersection between line of sight and the WBGS84
                 % ellispoid.
