@@ -12,7 +12,7 @@ startTime = datetime(2020,1,1,12,0,0);
 %% Run simulation
 timestep = 1;
 cubesat = satellite_simulation(orbital_parameters,initial_attitude,initial_angular_velocity,startTime);
-cubesat.initialize_model("simulink/satellite_propagator.slx",duration=200,timestep=timestep);
+cubesat.initialize_model("simulink/satellite_propagator.slx",duration=20,timestep=timestep);
 cubesat.simulate();
 
 %% Perform LOS analysis
@@ -35,6 +35,7 @@ hold on
 geoplot(ll_tar(:,1),ll_tar(:,2))
 legend("Satellite","LoS")
 geobasemap("satellite")
+title("Ground Tracks")
 
 % Quick plot of the orbit to check
 figure(2)
@@ -45,18 +46,57 @@ plot3(R_gt_tar_eci(:,1),R_gt_tar_eci(:,2),R_gt_tar_eci(:,3))
 axis equal
 grid on
 legend("Satellite","Sat ground track","LoS")
+title("3D Ground Tracks")
 
 %% Play satellite scenario
 % Clean coordinates from negative altitudes
 lla_tar(:,3) = 0;
 cubesat.play_scenario(lla_tar,sampleTime=1);
 
-% Compare calculated velocity with numerical derivative
+%% Compare calculated velocity with numerical derivative
 Vtar_numerical = diff(cubesat.Rtar)./timestep;
 Vtar = cubesat.Vtar(2:end,:);
+% Calculate the difference between the analytical and numerical velocities
+Vtar_diff = Vtar - Vtar_numerical;
+
+% Compare velocities
 figure(3)
 plot(Vtar)
 hold on
 plot(Vtar_numerical)
 legend("u - analytic","v - analytic","w - analytic","u - numerical","v - numerical","w - numerical")
-% TODO: compute difference between the two
+title("Velocity components")
+
+figure(4)
+% Subplot 1: Difference in u component
+subplot(3,1,1)
+plot(Vtar_diff(:,1))
+hold on
+plot(zeros(size(Vtar_diff(:,1))), 'r--') % Reference line at zero
+title('Difference in u component')
+xlabel('Time step')
+ylabel('Difference (m/s)')
+grid on
+
+% Subplot 2: Difference in v component
+subplot(3,1,2)
+plot(Vtar_diff(:,2))
+hold on
+plot(zeros(size(Vtar_diff(:,2))), 'r--') % Reference line at zero
+title('Difference in v component')
+xlabel('Time step')
+ylabel('Difference (m/s)')
+grid on
+
+% Subplot 3: Difference in w component
+subplot(3,1,3)
+plot(Vtar_diff(:,3))
+hold on
+plot(zeros(size(Vtar_diff(:,3))), 'r--') % Reference line at zero
+title('Difference in w component')
+xlabel('Time step')
+ylabel('Difference (m/s)')
+grid on
+
+% Adjust layout
+sgtitle('Velocity Differences: Vtar vs Vtar Numerical')
