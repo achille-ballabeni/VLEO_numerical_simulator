@@ -168,7 +168,7 @@ classdef satellite_simulation < handle
             coordinateAxes(sat);
 
             % Add conical sensor
-            los_sensor = conicalSensor(sat,"MaxViewAngle",0.05,"MountingAngles",[0,-90,0]);
+            los_sensor = conicalSensor(sat,"MaxViewAngle",1,"MountingAngles",[0,-90,0]);
             fieldOfView(los_sensor);
 
             % LOS intersection
@@ -184,10 +184,14 @@ classdef satellite_simulation < handle
             % satellite origin to its intersection with the earth surface.
             % Its direction is considered as exiting from the x axis of the
             % satellite.
+            %
+            % Input Arguments
+            %   model - "sphere" (default) or "WGS84", Earth model.
+            %     string
 
             arguments
                 obj 
-                options.type (1,1) string = "sphere" 
+                options.model (1,1) string = "sphere" 
             end
 
             % Inverse quaternion to go from body to inertial
@@ -197,12 +201,12 @@ classdef satellite_simulation < handle
             % the x axis of the satellite.
             LOS_hat = quatrotate(Qbody2in,[-1,0,0]);
 
-            if options.type == "sphere"
+            if options.model == "sphere"
                 % Intersection between line of sight and earth surface
                 rho = -dot(LOS_hat,obj.Rsat,2) - sqrt((dot(LOS_hat,obj.Rsat,2)).^2 - vecnorm(obj.Rsat,2,2).^2 + obj.Re^2);
                 rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
                 rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
-            elseif options.type == "ellipsoid"
+            elseif options.model == "WBGS84"
                 % Insersection between line of sight and the WBGS84
                 % ellispoid.
                 a = 6378137.0;
@@ -232,7 +236,7 @@ classdef satellite_simulation < handle
             obj.Vtar = obj.Vsat - (dot(obj.Rlos,obj.Vsat,2) + dot(obj.Rsat,cross(obj.Wsat,obj.Rlos),2))./(dot(obj.Rsat,LOS_hat,2) + rho).*LOS_hat + cross(obj.Wsat,obj.Rlos);
         end
 
-        function Rgt = ground_track(obj, type, frame)
+        function [Rgt,LLA_gt] = ground_track(obj, options)
             % GROUND_TRACK Computes the ground track vector of the
             % satellite or the LOS.
             %
@@ -240,18 +244,22 @@ classdef satellite_simulation < handle
             %   type - "satellite" or "los". Defaults to "satellite".
             %     string
             %   frame - "eci" or "ecef". Defaults to "eci".
+            %     string
+            %   model - "sphere" (default) or "WGS84", Earth model.
+            %     string
 
             arguments
                 obj 
-                type (1,1) string = "satellite"
-                frame (1,1) string = "eci"
+                options.type (1,1) string = "satellite"
+                options.frame (1,1) string = "eci"
+                options.model (1,1) string = "sphere"
             end
             
             % Compute corresponding ground track
-            if type == "satellite"
+            if options.type == "satellite"
                 % Find ground track of satellite
                 Rgt = obj.Rsat .* (obj.Re ./ vecnorm(obj.Rsat, 2, 2));
-            elseif type == "los"
+            elseif options.type == "los"
                 % Find ground track of the LOS
                 indexes = any(obj.Rlos ~= 0, 2);
                 Rgt = obj.Rtar;
@@ -260,12 +268,19 @@ classdef satellite_simulation < handle
                 error("The type of groundtrack %s is unknown", type)
             end
             
-            if frame == "ecef"
+            if options.frame == "ecef"
                 % Find the timetsamps in UTC
                 t_utc = obj.startTime + seconds(obj.t);
 
                 % Convert to ECEF
                 Rgt = eci2ecef_vect(t_utc,Rgt);
+            end
+
+            % Convert to find Latitude, Longitude and Altitude
+            if options.model == "WGS84"
+                LLA_gt = ecef2lla(Rgt,options.model);
+            else
+                LLA_gt = ecef2lla(Rgt,0,obj.Re);
             end
             
         end

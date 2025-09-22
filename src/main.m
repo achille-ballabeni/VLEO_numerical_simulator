@@ -18,16 +18,14 @@ cubesat.simulate();
 %% Perform LOS analysis
 cubesat.LOS();
 % Ground track vectors in ECI
-R_gt_sat_eci = cubesat.ground_track("satellite","eci");
-R_gt_tar_eci = cubesat.ground_track("los","eci");
+[R_gt_sat_eci, ~]  = cubesat.ground_track(type="satellite",frame="eci",model="sphere");
+[R_gt_tar_eci, ~] = cubesat.ground_track(type="los",frame="eci",model="sphere");
 % Ground track vectors in ECEF
-R_gt_sat_ecef = cubesat.ground_track("satellite","ecef");
-R_gt_tar_ecef = cubesat.ground_track("los","ecef");
+[R_gt_sat_ecef, lla_sat] = cubesat.ground_track(type="satellite",frame="ecef",model="sphere");
+[R_gt_tar_ecef, lla_tar] = cubesat.ground_track(type="los",frame="ecef",model="sphere");
 
 % Latitude and longitude
-lla_sat = ecef2lla(R_gt_sat_ecef,0,Re);
 ll_sat = lla_sat(:,1:2);
-lla_tar = ecef2lla(R_gt_tar_ecef,0,Re);
 ll_tar = lla_tar(:,1:2);
 
 % Plot ground tracks
