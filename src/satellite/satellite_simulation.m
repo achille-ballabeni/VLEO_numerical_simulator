@@ -168,7 +168,7 @@ classdef satellite_simulation < handle
             coordinateAxes(sat);
 
             % Add conical sensor
-            los_sensor = conicalSensor(sat,"MaxViewAngle",1,"MountingAngles",[0,-90,0]);
+            los_sensor = conicalSensor(sat,"MaxViewAngle",0.05,"MountingAngles",[0,-90,0]);
             fieldOfView(los_sensor);
 
             % LOS intersection
@@ -178,12 +178,17 @@ classdef satellite_simulation < handle
             satelliteScenarioViewer(sc,"CameraReferenceFrame","Inertial");
         end
 
-        function LOS(obj)
+        function LOS(obj,options)
             % LOS Find the Line-of-Sight vector.
             % The LOS vector is defined as the vector spanning from the
             % satellite origin to its intersection with the earth surface.
             % Its direction is considered as exiting from the x axis of the
             % satellite.
+
+            arguments
+                obj 
+                options.type (1,1) string = "sphere" 
+            end
 
             % Inverse quaternion to go from body to inertial
             Qbody2in = quatinv(obj.Qin2body);
@@ -192,10 +197,32 @@ classdef satellite_simulation < handle
             % the x axis of the satellite.
             LOS_hat = quatrotate(Qbody2in,[-1,0,0]);
 
-            % Intersection between line of sight and earth surface
-            rho = -dot(LOS_hat,obj.Rsat,2) - sqrt((dot(LOS_hat,obj.Rsat,2)).^2 - vecnorm(obj.Rsat,2,2).^2 + obj.Re^2);
-            rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
-            rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
+            if options.type == "sphere"
+                % Intersection between line of sight and earth surface
+                rho = -dot(LOS_hat,obj.Rsat,2) - sqrt((dot(LOS_hat,obj.Rsat,2)).^2 - vecnorm(obj.Rsat,2,2).^2 + obj.Re^2);
+                rho(imag(rho) ~= 0) = 0; % Solutions that have an imaginary part (no intersection) are set to zero
+                rho(rho<0) = 0; % Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
+            elseif options.type == "ellipsoid"
+                % Insersection between line of sight and the WBGS84
+                % ellispoid.
+                a = 6378137.0;
+                b = a;
+                c = 6356752.314245;
+                
+                p1 = (LOS_hat(:,1).^2)./a^2 + (LOS_hat(:,2).^2)./b^2 + (LOS_hat(:,3).^2)./c^2;
+                p2 = (2*obj.Rsat(:,1).*LOS_hat(:,1))./a^2 + (2*obj.Rsat(:,2).*LOS_hat(:,2))./b^2 + (2*obj.Rsat(:,3).*LOS_hat(:,3))./c^2;
+                p3 = (obj.Rsat(:,1).^2)./a^2 + (obj.Rsat(:,2).^2)./b^2 + (obj.Rsat(:,3).^2)./c^2-1;
+                rho = zeros(size(obj.t));
+                for i = 1:numel(obj.t)
+                    r = roots([p1(i),p2(i),p3(i)]);
+                    r = r(~imag(r));
+                    r = min(r);
+                    r(r<0) = 0;
+                    rho(i,1) = r;
+                end
+            else
+                error("The type %s is unknown for the los calculation", options.type)
+            end
 
             % Find the LOS vector and target position vector
             obj.Rlos = rho.*LOS_hat; 
