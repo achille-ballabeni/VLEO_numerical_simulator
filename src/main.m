@@ -48,11 +48,6 @@ grid on
 legend("Satellite","Sat ground track","LoS")
 title("3D Ground Tracks")
 
-%% Play satellite scenario
-% Clean coordinates from negative altitudes
-lla_tar(:,3) = 0;
-cubesat.play_scenario(lla_tar,sampleTime=1);
-
 %% Compare calculated velocity with numerical derivative
 [Vtar_numerical,t_der,idx] = derivative(cubesat.Rtar,cubesat.t,method="edgepoint");
 Vtar = cubesat.Vtar;
@@ -100,3 +95,8 @@ grid on
 
 % Adjust layout
 sgtitle('Velocity Differences: Vtar vs Vtar Numerical')
+
+%% Play satellite scenario
+% Clean coordinates from negative altitudes
+lla_tar(:,3) = 0;
+cubesat.play_scenario(lla_tar,sampleTime=1);

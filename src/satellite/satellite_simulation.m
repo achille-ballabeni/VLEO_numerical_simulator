@@ -104,8 +104,9 @@ classdef satellite_simulation < handle
             % Setup simulation parameters
             obj.simIn = Simulink.SimulationInput(model_path);
             obj.simIn = obj.simIn.setModelParameter("StopTime", num2str(obj.simLength), ...
-                "Solver","ode4", ...
-                "FixedStep",num2str(options.timestep));
+                "Solver","ode45", ...
+                "AbsTol","1e-8", ...
+                "RelTol","1e-8");
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "startDate", num2str(startTimeJD));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "semiMajorAxis", num2str(a));
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "eccentricity", num2str(e));
@@ -159,6 +160,10 @@ classdef satellite_simulation < handle
             % Setup satellite scenario object
             stopTime = obj.startTime + seconds(obj.simLength);
             sc = satelliteScenario(obj.startTime,stopTime,options.sampleTime);
+            numericalPropagator(sc,"GravitationalPotentialModel","point-mass", ...
+                "IncludeAtmosDrag",false, ...
+                "IncludeSRP",false, ...
+                "IncludeThirdBodyGravity",false);
             
             % Add satellite
             sat = satellite(sc,Rsat_ts,"Name",options.Name);
@@ -172,7 +177,7 @@ classdef satellite_simulation < handle
             fieldOfView(los_sensor);
 
             % LOS intersection
-            platform(sc,timeseries(los_gt),"Name","LOS_intersection");
+            platform(sc,timeseries(los_gt,obj.t),"Name","LOS_intersection");
             
             % Play scenario
             satelliteScenarioViewer(sc,"CameraReferenceFrame","Inertial");
