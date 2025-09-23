@@ -54,48 +54,48 @@ lla_tar(:,3) = 0;
 cubesat.play_scenario(lla_tar,sampleTime=1);
 
 %% Compare calculated velocity with numerical derivative
-Vtar_numerical = diff(cubesat.Rtar)./timestep;
-Vtar = cubesat.Vtar(2:end,:);
-% Calculate the difference between the analytical and numerical velocities
-Vtar_diff = Vtar - Vtar_numerical;
+[Vtar_numerical,t_der,idx] = derivative(cubesat.Rtar,cubesat.t,method="edgepoint");
+Vtar = cubesat.Vtar;
+% Calculate the relative error
+Vtar_diff = abs(Vtar(idx,:) - Vtar_numerical)./Vtar(idx,:);
 
 % Compare velocities
 figure(3)
-plot(Vtar)
+plot(ones(size(Vtar)).*cubesat.t,Vtar)
 hold on
-plot(Vtar_numerical)
+plot(ones(size(Vtar_numerical)).*t_der,Vtar_numerical,"x","LineWidth",1)
 legend("u - analytic","v - analytic","w - analytic","u - numerical","v - numerical","w - numerical")
-title("Velocity components")
+title("Velocity components [m/s]")
 
 figure(4)
 % Subplot 1: Difference in u component
 subplot(3,1,1)
-plot(Vtar_diff(:,1))
+plot(t_der,Vtar_diff(:,1),"x","LineWidth",1.5)
 hold on
-plot(zeros(size(Vtar_diff(:,1))), 'r--') % Reference line at zero
-title('Difference in u component')
+plot(t_der,zeros(size(Vtar_diff(:,1))), 'r--') % Reference line at zero
+title('Relative error - u component')
 xlabel('Time step')
-ylabel('Difference (m/s)')
+ylabel('Relative error')
 grid on
 
 % Subplot 2: Difference in v component
 subplot(3,1,2)
-plot(Vtar_diff(:,2))
+plot(t_der,Vtar_diff(:,2),"x","LineWidth",1.5)
 hold on
-plot(zeros(size(Vtar_diff(:,2))), 'r--') % Reference line at zero
-title('Difference in v component')
+plot(t_der,zeros(size(Vtar_diff(:,2))), 'r--') % Reference line at zero
+title('Relative error - v component')
 xlabel('Time step')
-ylabel('Difference (m/s)')
+ylabel('Relative error')
 grid on
 
 % Subplot 3: Difference in w component
 subplot(3,1,3)
-plot(Vtar_diff(:,3))
+plot(t_der,Vtar_diff(:,3),"x","LineWidth",1.5)
 hold on
-plot(zeros(size(Vtar_diff(:,3))), 'r--') % Reference line at zero
-title('Difference in w component')
+plot(t_der,zeros(size(Vtar_diff(:,3))), 'r--') % Reference line at zero
+title('Relative error - w component')
 xlabel('Time step')
-ylabel('Difference (m/s)')
+ylabel('Relative error')
 grid on
 
 % Adjust layout
