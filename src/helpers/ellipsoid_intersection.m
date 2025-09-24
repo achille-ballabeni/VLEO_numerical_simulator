@@ -4,8 +4,8 @@ function p = ellipsoid_intersection(axes,X0,X)
 % a line X0 + pX with an ellipsoid with equation 
 % x^2/a^2+y^2/b^2+z^2/c^2 = 1. A single value for the parameter p is
 % returned, corresponding to the closest intersection to X0. Returns zero
-% if there is no intersection or if it is negative (meaning it is inside
-% the sphere).
+% if there is no intersection or if it is negative (meaning that the
+% intersection is in the wrong direction).
 % The formula is taken from https://math.stackexchange.com/questions/3722553/find-intersection-between-line-and-ellipsoid
 % 
 % Input Arguments
@@ -34,7 +34,7 @@ a = axes(1);
 b = axes(2);
 c = axes(3);
 
-% Determine polinomial coefficient p1*p^2 + p2*p + p3 = 0
+% Determine polynomial coefficient p1*p^2 + p2*p + p3 = 0
 p1 = (X(:,1).^2)./a^2 + (X(:,2).^2)./b^2 + (X(:,3).^2)./c^2;
 p2 = (2*X0(:,1).*X(:,1))./a^2 + (2*X0(:,2).*X(:,2))./b^2 + (2*X0(:,3).*X(:,3))./c^2;
 p3 = (X0(:,1).^2)./a^2 + (X0(:,2).^2)./b^2 + (X0(:,3).^2)./c^2-1;

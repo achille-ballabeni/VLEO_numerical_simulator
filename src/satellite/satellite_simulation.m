@@ -9,7 +9,7 @@ classdef satellite_simulation < handle
 
     properties
         orbital_parameters % Initial orbital parameters
-        initial_attitude % Initil Euler rotation angles in the order XYZ
+        initial_attitude % Initial Euler rotation angles in the order XYZ
         initial_angular_velocity % Initial angular velocity vector (ECI frame)
         startTime % Start time of the simulation
         simLength % Duration of the simulation [s]
@@ -142,7 +142,7 @@ classdef satellite_simulation < handle
             %     n-by-3 array
             %   sampleTime - Timestep of satellite scenario simulation (defaults to 60s).
             %     scalar
-            %   Name - Name dispalyed in the simulation (CubeSat by default).
+            %   Name - Name displayed in the simulation (CubeSat by default).
             %     string
 
             arguments
@@ -210,14 +210,14 @@ classdef satellite_simulation < handle
                 % Intersection between line of sight and earth surface
                 rho = sphere_intersection(obj.Re,obj.Rsat,LOS_hat);
             elseif options.model == "WGS84"
-                % Insersection between line of sight and the WBGS84
+                % Insersection between line of sight and the WGS84
                 % ellispoid https://en.wikipedia.org/wiki/World_Geodetic_System#WGS84
                 a = 6378137.0;
                 b = a;
                 c = 6356752.314245;
                 rho = ellipsoid_intersection([a,b,c],obj.Rsat,LOS_hat);
             else
-                error("The type %s is unknown for the los calculation", options.type)
+                error("The type %s is unknown for the LOS calculation", options.type)
             end
 
             % Find the LOS vector and target position vector

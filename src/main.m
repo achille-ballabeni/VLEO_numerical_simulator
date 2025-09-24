@@ -28,16 +28,16 @@ cubesat.LOS();
 ll_sat = lla_sat(:,1:2);
 ll_tar = lla_tar(:,1:2);
 
-% Plot ground tracks
+% Plot ground tracks in ECEF
 figure(1)
 geoplot(ll_sat(:,1),ll_sat(:,2))
 hold on
 geoplot(ll_tar(:,1),ll_tar(:,2))
 legend("Satellite","LoS")
 geobasemap("satellite")
-title("Ground Tracks")
+title("ECEF Ground Tracks")
 
-% Quick plot of the orbit to check
+% Plot ground tracks in ECI
 figure(2)
 plot3(cubesat.Rsat(:,1),cubesat.Rsat(:,2),cubesat.Rsat(:,3))
 hold on
@@ -46,7 +46,7 @@ plot3(R_gt_tar_eci(:,1),R_gt_tar_eci(:,2),R_gt_tar_eci(:,3))
 axis equal
 grid on
 legend("Satellite","Sat ground track","LoS")
-title("3D Ground Tracks")
+title("ECI Ground Tracks")
 
 %% Compare calculated velocity with numerical derivative
 [Vtar_numerical,t_der,idx] = derivative(cubesat.Rtar,cubesat.t,method="edgepoint");

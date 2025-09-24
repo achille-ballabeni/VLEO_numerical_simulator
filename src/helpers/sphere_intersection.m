@@ -29,9 +29,9 @@ end
 
 % Compute intersection
 p = -dot(X,X0,2) - sqrt((dot(X,X0,2)).^2 - vecnorm(X0,2,2).^2 + R^2);
-% Solutions that have an imaginary part (no intersection) are set to zero
+% Keep only real-valued intersections
 p(imag(p) ~= 0) = 0;
-% Solutions that have a negative separation are set to zero (intersection opposite of the LOS)
+% Discard intersections behind the starting point (negative p)
 p(p<0) = 0;
 
 end

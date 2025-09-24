@@ -3,7 +3,7 @@ function [y,tout,idx] = derivative(x,t,options)
 % Computes the approximate numerical derivative of a vector x using the
 % timestamps given in t. It can use three different methods:
 % - standard: computes the difference between two adjacent points in x and
-%   divides by the corresponding time differece.
+%   divides by the corresponding time difference.
 %
 % - midpoint: computes the derivative in the interval
 %   [...,Xk-1,Xk,Xk+1,...] by using only the edge points. The derivative is
@@ -26,7 +26,7 @@ function [y,tout,idx] = derivative(x,t,options)
 %     k-by-m array
 %   tout - Output time.
 %     k-by-1 array
-%   idx - indexes of x corresponding to the derivative calculaltion.
+%   idx - indexes of x corresponding to the derivative calculation.
 
 arguments (Input)
     x (:,:) double
