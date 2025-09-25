@@ -1,4 +1,19 @@
 clear
+%% Satellite parameters
+mass = 12; % [kg]
+dimz = 360/1000; % [m]
+dimy = 100/1000; % [m]
+dimx = 226.3/1000; % [m]
+Izz = 1/12*mass*(dimx^2+dimy^2);
+Iyy = 1/12*mass*(dimx^2+dimz^2);
+Ixx = 1/12*mass*(dimy^2+dimz^2);
+Ixy = 0;
+Ixz = 0;
+Iyz = 0;
+
+% Inertia matrix
+I = [Ixx Ixy Ixz; Ixy Iyy Iyz; Ixz Iyz Izz];
+
 %% Orbital parameters and inital conditions
 Re = earthRadius;
 mi = 398600.418e9;
@@ -63,6 +78,7 @@ hold on
 plot(ones(size(Vtar_numerical)).*t_der,Vtar_numerical,"x","LineWidth",1)
 legend("u - analytic","v - analytic","w - analytic","u - numerical","v - numerical","w - numerical")
 title("Velocity components [m/s]")
+grid on
 
 % Velocity relative errors
 figure(4)
