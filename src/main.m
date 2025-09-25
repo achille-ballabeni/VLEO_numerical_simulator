@@ -7,12 +7,13 @@ orbital_parameters = [a;0;0;0;0;0];
 T = period(a,mi);
 initial_attitude = [0;0;0];
 initial_angular_velocity = [0;0;360/T];
-startTime = datetime(2020,1,1,12,0,0);
+startTime = datetime(2025,1,1,12,0,0);
 
 %% Run simulation
 timestep = 1;
+duration = 200;
 cubesat = satellite_simulation(orbital_parameters,initial_attitude,initial_angular_velocity,startTime);
-cubesat.initialize_model("simulink/satellite_propagator.slx",duration=20,timestep=timestep);
+cubesat.initialize_model("simulink/satellite_propagator.slx",duration=duration,timestep=timestep);
 cubesat.simulate();
 
 %% Perform LOS analysis
@@ -28,6 +29,13 @@ cubesat.LOS();
 ll_sat = lla_sat(:,1:2);
 ll_tar = lla_tar(:,1:2);
 
+% Find numerical derivative
+[Vtar_numerical,t_der,idx] = derivative(cubesat.Rtar,cubesat.t,method="edgepoint");
+Vtar = cubesat.Vtar;
+% Calculate the relative error
+Vtar_diff = abs(Vtar(idx,:) - Vtar_numerical)./Vtar(idx,:);
+
+%% Plotting
 % Plot ground tracks in ECEF
 figure(1)
 geoplot(ll_sat(:,1),ll_sat(:,2))
@@ -48,12 +56,6 @@ grid on
 legend("Satellite","Sat ground track","LoS")
 title("ECI Ground Tracks")
 
-%% Compare calculated velocity with numerical derivative
-[Vtar_numerical,t_der,idx] = derivative(cubesat.Rtar,cubesat.t,method="edgepoint");
-Vtar = cubesat.Vtar;
-% Calculate the relative error
-Vtar_diff = abs(Vtar(idx,:) - Vtar_numerical)./Vtar(idx,:);
-
 % Compare velocities
 figure(3)
 plot(ones(size(Vtar)).*cubesat.t,Vtar)
@@ -62,6 +64,7 @@ plot(ones(size(Vtar_numerical)).*t_der,Vtar_numerical,"x","LineWidth",1)
 legend("u - analytic","v - analytic","w - analytic","u - numerical","v - numerical","w - numerical")
 title("Velocity components [m/s]")
 
+% Velocity relative errors
 figure(4)
 % Subplot 1: Difference in u component
 subplot(3,1,1)
