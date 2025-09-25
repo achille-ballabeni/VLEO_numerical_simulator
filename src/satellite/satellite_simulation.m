@@ -18,11 +18,12 @@ classdef satellite_simulation < handle
         t % Time vector from simulation output
         Rsat % Satellite position in ECI
         Vsat % Satellite velocity in ECI
-        Qin2body % Quaternion representing the attitude of the satellite
+        Qin2body % Attitude quaternion (inertial to body)
+        Qbody2in % Attitude quaternion (body to inertial)
         Rlos % Line of sight position (from satellite to earth)
         Rtar % Target position
         Vtar % Target velocity
-        Wsat % Satellite angular velocity
+        Wsat_b % Satellite angular velocity
     end
 
     methods
@@ -104,7 +105,8 @@ classdef satellite_simulation < handle
             % Setup simulation parameters
             obj.simIn = Simulink.SimulationInput(model_path);
             obj.simIn = obj.simIn.setModelParameter("StopTime", num2str(obj.simLength), ...
-                "Solver","ode45", ...
+                "Solver","ode4", ...
+                "FixedStep", num2str(options.timestep), ...
                 "AbsTol","1e-8", ...
                 "RelTol","1e-8");
             obj.simIn = obj.simIn.setBlockParameter("satellite_propagator/Spacecraft Dynamics", "startDate", num2str(startTimeJD));
@@ -129,7 +131,8 @@ classdef satellite_simulation < handle
             obj.Rsat = obj.simOut.yout{1}.Values.Data;
             obj.Vsat = obj.simOut.yout{2}.Values.Data;
             obj.Qin2body = obj.simOut.yout{4}.Values.Data;
-            obj.Wsat = deg2rad(obj.simOut.yout{5}.Values.Data);
+            obj.Wsat_b = deg2rad(obj.simOut.yout{5}.Values.Data);
+            obj.Qbody2in = quatinv(obj.Qin2body);
 
         end
 
@@ -199,12 +202,9 @@ classdef satellite_simulation < handle
                 options.model (1,1) string = "sphere" 
             end
 
-            % Inverse quaternion to go from body to inertial
-            Qbody2in = quatinv(obj.Qin2body);
-
             % Find direction of line of sight, considered as exiting from 
             % the x axis of the satellite.
-            LOS_hat = quatrotate(Qbody2in,[-1,0,0]);
+            LOS_hat = quatrotate(obj.Qbody2in,[-1,0,0]);
 
             if options.model == "sphere"
                 % Intersection between line of sight and earth surface
@@ -224,8 +224,11 @@ classdef satellite_simulation < handle
             obj.Rlos = rho.*LOS_hat; 
             obj.Rtar = obj.Rsat + obj.Rlos;
 
+            % Angular velocity in inertial frame
+            Wsat_in = quatrotate(obj.Qbody2in,obj.Wsat_b);
+
             % Target velocity
-            obj.Vtar = obj.Vsat - (dot(obj.Rlos,obj.Vsat,2) + dot(obj.Rsat,cross(obj.Wsat,obj.Rlos),2))./(dot(obj.Rsat,LOS_hat,2) + rho).*LOS_hat + cross(obj.Wsat,obj.Rlos);
+            obj.Vtar = obj.Vsat - (dot(obj.Rlos,obj.Vsat,2) + dot(obj.Rsat,cross(Wsat_in,obj.Rlos),2))./(dot(obj.Rsat,LOS_hat,2) + rho).*LOS_hat + cross(Wsat_in,obj.Rlos);
         end
 
         function [Rgt,LLA_gt] = ground_track(obj, options)
